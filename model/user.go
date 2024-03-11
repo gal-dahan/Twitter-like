@@ -2,7 +2,7 @@ package model
 
 type User struct {
 	Name         string
-	Followers    []*User
+	Followers    map[string]*User
 	FollowersNum int
 	Tweets       []Tweet
 }

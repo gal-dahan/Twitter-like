@@ -3,12 +3,14 @@ package controllers
 import (
 	"errors"
 	"fmt"
-
 	"github.com/gal-dahan/Twitter-like/model"
 )
+func isFollowerAlready(user model.User, followerName string) bool {
+	_, exists := user.Followers[followerName]
+	return exists
+}
 
 func FollowUser(userName string, followerName string) error {
-	fmt.Println("FollowUser")
 	user, err := GetUser(userName)
 	if err != nil {
 		return errors.New("userName not found")
@@ -17,10 +19,19 @@ func FollowUser(userName string, followerName string) error {
 	if err != nil {
 		return errors.New("followerName not found")
 	}
-	user.Followers = append(user.Followers, follower)
+	if user.Name == follower.Name {
+		return errors.New("user can't follow himself")
+	}
+	if isFollowerAlready(*user, followerName) {
+		return fmt.Errorf("%v is already following %v", followerName, userName)
+	}
+
+	user.Followers[followerName] = follower
 	user.FollowersNum++
+	fmt.Printf("User %v followed successfully by %v\n", userName, followerName)
 	return nil
 }
+
 func UnfollowUser(userName string, followerName string) error {
 	user, err := GetUser(userName)
 	if err != nil {
@@ -30,41 +41,43 @@ func UnfollowUser(userName string, followerName string) error {
 	if err != nil {
 		return err
 	}
-	for i, u := range user.Followers {
-		if u.Name == follower.Name {
-			user.Followers = append(user.Followers[:i], user.Followers[i+1:]...) //remove the follower from the followers list
-			user.FollowersNum--
-			return nil
-		}
+	if user.Name == follower.Name {
+		return errors.New("user can't unfollow himself")
 	}
+	if !isFollowerAlready(*user, followerName) {
+		return fmt.Errorf("%v is not following %v", followerName, userName)
+	}
+	delete(user.Followers, followerName)
+	user.FollowersNum--
+	fmt.Printf("User %v unfollowed successfully by %v\n", userName, followerName)
+
 	return nil
 }
 
 func PostTweet(userName string, tweetContent string) error {
-	fmt.Println("PostTweet")
 	user, err := GetUser(userName)
 	if err != nil {
 		return errors.New("userName not found")
 	}
-	user.Tweets = append(user.Tweets, model.Tweet{Post: tweetContent})
+	newTweet := model.Tweet{
+		User: *user,
+		Post: tweetContent,
+	}
+	user.Tweets = append(user.Tweets, newTweet)
+	fmt.Println("Tweet posted successfully by", userName, ":", tweetContent)
+
 	return nil
 }
 
 func GetUserFeed(userName string) ([]model.Tweet, error) {
 	user, err := GetUser(userName)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("The user name "+userName+" not found")
 	}
 
 	return user.Tweets, nil
 }
-func populateFollowersMap(user *model.User) map[string]bool {
-	followersMap := make(map[string]bool)
-	for _, follower := range user.Followers {
-		followersMap[follower.Name] = true
-	}
-	return followersMap
-}
+
 
 func GetMutualFollowers(userName1 string, userName2 string) ([]*model.User, error) {
 	user1, err := GetUser(userName1)
@@ -76,19 +89,19 @@ func GetMutualFollowers(userName1 string, userName2 string) ([]*model.User, erro
 		return nil, err
 	}
 
-	followersMap1 := populateFollowersMap(user1)
 	var mutualFollowers []*model.User
 	for _, follower := range user2.Followers {
-		if followersMap1[follower.Name] {
+		if _, exists := user1.Followers[follower.Name]; exists {
 			mutualFollowers = append(mutualFollowers, follower)
 		}
 	}
 
 	return mutualFollowers, nil
 }
+
 func GetTopInfluencers(n int) ([]*model.User, error) {
 	if n > len(model.AllUsers) {
-		return nil, errors.New("n is bigger than the number of users")
+		return nil, fmt.Errorf("%d is bigger than the number of users", n)
 	}
 	return model.AllUsers[:n], nil
 }

@@ -8,12 +8,12 @@ import (
 
 func CreateUser(name string) error {
 	if _, exists := model.DatabaseUser[name]; exists {
-		return errors.New("user already exists")
+		return errors.New("The user with "+name+ " already exists")
 	}
 
 	user := &model.User{
 		Name:         name,
-		Followers:    []*model.User{},
+		Followers:    make(map[string]*model.User),
 		FollowersNum: 0,
 		Tweets:       []model.Tweet{},
 	}
@@ -24,10 +24,11 @@ func CreateUser(name string) error {
 
 	return nil
 }
+
 func GetUser(name string) (*model.User, error) {
 	user, exists := model.DatabaseUser[name]
 	if !exists {
-		return nil, errors.New("user not found")
+		return nil, errors.New("The user name "+name+" not found")
 	}
 
 	return user, nil
@@ -38,7 +39,9 @@ func UpdateUser(name string, newName string) error {
 	if err != nil {
 		return err
 	}
+
 	user.Name = newName
+	fmt.Printf("User updated name %v to %v successfully!\n", name , newName)
 	return nil
 }
 
@@ -47,17 +50,16 @@ func DeleteUser(name string) error {
 	if err != nil {
 		return errors.New("user not found")
 	}
-	//To delete from a slice AllUsers
 	for i, user := range model.AllUsers {
 		if user.Name == name {
-			// Swap with the last element and truncate the slice to remove the user
 			model.AllUsers[i] = model.AllUsers[len(model.AllUsers)-1]
 			model.AllUsers = model.AllUsers[:len(model.AllUsers)-1]
 			break
 		}
 	}
-	delete(model.DatabaseUser, name) //To delete a key from a map(DatabaseUser), Go built-in delete() function.
 
+	delete(model.DatabaseUser, name) //To delete a key from a map(DatabaseUser), Go built-in delete() function.
+	fmt.Printf("User %v deleted successfully!\n", name)
 	return nil
 }
 
